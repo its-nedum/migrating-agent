@@ -12,7 +12,10 @@ const target_database_config = {
     database: 'target_database'
 }
 
+const BATCH_SIZE = 100;
+
 module.exports = {
     source_database_config,
-    target_database_config
+    target_database_config,
+    BATCH_SIZE,
 }
