@@ -6,15 +6,15 @@ const {
     BATCH_SIZE, // Number of data to process in each batch
 } = require("../config");
 
-const Campaigns = async () => {
+const Tsjb = async () => {
     
     try {
         let offset = 0;
 
         // Load progress from the JSON file if it exists
         let progress = { offset: 0 };
-        if (fs.existsSync('campaign.json')) {
-            const progressData = fs.readFileSync('campaign.json', 'utf8');
+        if (fs.existsSync('tsj.json')) {
+            const progressData = fs.readFileSync('tsj.json', 'utf8');
             progress = JSON.parse(progressData);
             offset = progress.offset;
         }
@@ -23,16 +23,16 @@ const Campaigns = async () => {
         const target_connection = await mysql.createConnection(target_database_config);
         console.log("Source and Target database connected!")
 
-        // We use transactions to ensure that either all campaigns are inserted successfully or none of them are, maintaining data consistency
+        // We use transactions to ensure that either all tsjb are inserted successfully or none of them are, maintaining data consistency
         await target_connection.query("START TRANSACTION");
         console.log("Trasaction Started!")
 
-        // Fetch the structure of the 'campaigns' table from the source database
-        const [sourceTableFields] = await source_connection.execute("SHOW COLUMNS FROM campaigns");
+        // Fetch the structure of the 'tsjb' table from the source database
+        const [sourceTableFields] = await source_connection.execute("SHOW COLUMNS FROM tsjb");
         console.log("Table columns fetched!")
 
         // Build the CREATE TABLE query for the target database based on the source table structure
-        const createTableQuery = `CREATE TABLE IF NOT EXISTS campaigns (${sourceTableFields.map(field => `${field.Field} ${field.Type}`).join(",")})`;
+        const createTableQuery = `CREATE TABLE IF NOT EXISTS tsjb (${sourceTableFields.map(field => `${field.Field} ${field.Type}`).join(",")})`;
         await target_connection.execute(createTableQuery);
         console.log("Table created in target database!")
 
@@ -40,9 +40,9 @@ const Campaigns = async () => {
        
         do {
             try {
-                // Fetch campaigns from the source database
-                batches = await source_connection.execute("SELECT * FROM campaigns LIMIT ?, ?", [offset, BATCH_SIZE]);
-                console.log("Fetched campaign data with offset and batch size");
+                // Fetch tsjb from the source database
+                batches = await source_connection.execute("SELECT * FROM tsjb LIMIT ?, ?", [offset, BATCH_SIZE]);
+                console.log("Fetched tsj data with offset and batch size");
 
                 // Check if there's no more data to fetch
                 if (batches[0].length === 0) {
@@ -50,17 +50,17 @@ const Campaigns = async () => {
                     break; // Exit the loop if there's no more data
                 }
                 
-                const insertions = batches[0].map(async (campaign) => {
+                const insertions = batches[0].map(async (tsj) => {
                     try {
-                        // Check if this campaign already exists in the target database
-                        const [existingUser] = await target_connection.execute("SELECT * FROM campaigns WHERE id = ?", [campaign.id]);
-                        console.log("Checked for existing campaign!")
+                        // Check if this tsj already exists in the target database
+                        const [existingUser] = await target_connection.execute("SELECT * FROM tsjb WHERE id = ?", [tsj.id]);
+                        console.log("Checked for existing tsj!")
                         
                         if(existingUser.length === 0){
                             // Any data normalization can take place here before insertion
-                            const columns = Object.keys(campaign).join(', ');
-                            const values = Object.values(campaign).map(val => target_connection.escape(val)).join(', ');
-                            const insert_query = `INSERT INTO campaigns (${columns}) VALUES (${values})`;
+                            const columns = Object.keys(tsj).join(', ');
+                            const values = Object.values(tsj).map(val => target_connection.escape(val)).join(', ');
+                            const insert_query = `INSERT INTO tsjb (${columns}) VALUES (${values})`;
                             await target_connection.query(insert_query);
                             console.log(`Migration succeeded!`)
                         }
@@ -77,7 +77,7 @@ const Campaigns = async () => {
 
                 // Save progress to the JSON file
                 progress.offset = offset;
-                fs.writeFileSync('campaign.json', JSON.stringify(progress));
+                fs.writeFileSync('tsj.json', JSON.stringify(progress));
             } catch (batchError) {
                 // Rollback the current batch and resume from the last successful batch
                 console.log('An error occurred in the current batch. Rolling back...');
@@ -94,10 +94,10 @@ const Campaigns = async () => {
         target_connection.end();
 
         // Delete the progress file after successful completion
-        fs.unlinkSync('campaign.json');
+        fs.unlinkSync('tsj.json');
     } catch (error) {
         console.log(error);
     }
 }
 
-module.exports = Campaigns
+module.exports = Tsjb
