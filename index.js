@@ -1,7 +1,7 @@
 const { 
     Users, 
     Campaigns 
-} = require("./Tables");
+} = require("./tables");
 
 async function migrate(){
     try {
