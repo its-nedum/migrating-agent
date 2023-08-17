@@ -7,6 +7,7 @@ const {
 } = require("../config");
 
 const Users = async () => {
+    
     try {
         let offset = 0;
 
@@ -20,31 +21,48 @@ const Users = async () => {
 
         const source_connection = await mysql.createConnection(source_database_config);
         const target_connection = await mysql.createConnection(target_database_config);
+        console.log("Source and Target database connected!")
 
         // We use transactions to ensure that either all users are inserted successfully or none of them are, maintaining data consistency
         await target_connection.query("START TRANSACTION");
+        console.log("Trasaction Started!")
 
         // Fetch the structure of the 'users' table from the source database
         const [sourceTableFields] = await source_connection.execute("SHOW COLUMNS FROM users");
+        console.log("Table columns fetched!")
 
         // Build the CREATE TABLE query for the target database based on the source table structure
         const createTableQuery = `CREATE TABLE IF NOT EXISTS users (${sourceTableFields.map(field => `${field.Field} ${field.Type}`).join(",")})`;
         await target_connection.execute(createTableQuery);
+        console.log("Table created in target database!")
 
-        let batches;
-
+        let batches = []; 
+       
         do {
             try {
                 // Fetch users from the source database
                 batches = await source_connection.execute("SELECT * FROM users LIMIT ?, ?", [offset, BATCH_SIZE]);
+                console.log("Fetched user data with offset and batch size");
 
-                const insertions = batches.map(async (user) => {
+                // Check if there's no more data to fetch
+                if (batches[0].length === 0) {
+                    console.log("No more data to exiting...")
+                    break; // Exit the loop if there's no more data
+                }
+                
+                const insertions = batches[0].map(async (user) => {
                     try {
                         // Check if this user already exists in the target database
                         const [existingUser] = await target_connection.execute("SELECT * FROM users WHERE id = ?", [user.id]);
+                        console.log("Checked for existing user!")
+                        
                         if(existingUser.length === 0){
                             // Any data normalization can take place here before insertion
-                            await target_connection.execute(`INSERT INTO users SET ?`, user)
+                            const columns = Object.keys(user).join(', ');
+                            const values = Object.values(user).map(val => target_connection.escape(val)).join(', ');
+                            const insert_query = `INSERT INTO users (${columns}) VALUES (${values})`;
+                            await target_connection.query(insert_query);
+                            console.log(`Migration succeeded!`)
                         }
                     } catch (error) {
                         console.log(error);
@@ -67,8 +85,8 @@ const Users = async () => {
                 // Exit the loop and resume from the last successful batch
                 break;
             }
-        } while(batches.length > 0)
-
+        } while(true)
+        
         await target_connection.query("COMMIT");
 
         // close connection
