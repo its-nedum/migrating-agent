@@ -52,6 +52,7 @@ const UserInvitations = require("./UserInvitations")
 const Wallets = require("./Wallets")
 const Wallet = require("./Wallet")
 const ZapierTriggers = require("./ZapierTriggers")
+const ContactInternational = require("./ContactInternational")
 
 module.exports = {
     Users,
@@ -108,4 +109,5 @@ module.exports = {
     Wallet,
     Wallets,
     ZapierTriggers,
+    ContactInternational,
 }
