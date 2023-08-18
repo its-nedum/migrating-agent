@@ -53,6 +53,7 @@ const {
     Wallet,
     Wallets,
     ZapierTriggers,
+    ContactInternational,
 } = require("./tables");
 
 async function migrate(){
@@ -112,6 +113,7 @@ async function migrate(){
         await Wallet();
         await Wallets();
         await ZapierTriggers();
+        await ContactInternational();
     } catch (error) {
       console.error(error)  
     }
